@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Public Service Requests</title>
+</head>
+<body>
+  <h1>Public Service Requests</h1>
+  <input id="email" type="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password (6+ chars)">
+  <button onclick="register()">Register</button>
+  <button onclick="login()">Login</button>
+  <p id="msg"></p>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script>
+    const msg = document.getElementById('msg');
+    const getEmail = () => document.getElementById('email').value;
+    const getPassword = () => document.getElementById('password').value;
+
+    async function register() {
+      const { data, error } = await db.auth.signUp({ email: getEmail(), password: getPassword() });
+      if (error) { msg.textContent = error.message; return; }
+      await db.from('profiles').insert({ id: data.user.id });
+      location.href = 'dashboard.html';
+    }
+
+    async function login() {
+      const { data, error } = await db.auth.signInWithPassword({ email: getEmail(), password: getPassword() });
+      if (error) { msg.textContent = error.message; return; }
+      const { data: profile } = await db.from('profiles').select('role').eq('id', data.user.id).single();
+      location.href = profile && profile.role === 'admin' ? 'admin.html' : 'dashboard.html';
+    }
+  </script>
+</body>
+</html>
