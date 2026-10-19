@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin Dashboard</title>
+</head>
+<body>
+  <h1>Admin Dashboard</h1>
+  <button onclick="logout()">Logout</button>
+
+  <h2>Analytics</h2>
+  <p id="stats"></p>
+
+  <h2>All requests</h2>
+  <table border="1" cellpadding="6">
+    <thead>
+      <tr><th>Category</th><th>Location</th><th>Description</th><th>Date</th><th>Status</th></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script>
+    const STATUSES = ['Pending', 'In Progress', 'Resolved'];
+
+    async function init() {
+      const { data } = await db.auth.getUser();
+      if (!data.user) { location.href = 'index.html'; return; }
+      const { data: profile } = await db.from('profiles').select('role').eq('id', data.user.id).single();
+      if (!profile || profile.role !== 'admin') { location.href = 'dashboard.html'; return; }
+      loadRequests();
+    }
+
+    async function loadRequests() {
+      const { data, error } = await db.from('requests').select('*').order('created_at', { ascending: false });
+      if (error) { document.getElementById('stats').textContent = error.message; return; }
+
+      const open = data.filter(r => r.status !== 'Resolved').length;
+      const resolved = data.length - open;
+      document.getElementById('stats').textContent =
+        'Total: ' + data.length + ' | Open: ' + open + ' | Resolved: ' + resolved;
+
+      const tbody = document.getElementById('rows');
+      tbody.innerHTML = '';
+      data.forEach(r => {
+        const tr = document.createElement('tr');
+        const cells = [r.category, r.location, r.description, new Date(r.created_at).toLocaleDateString()];
+        cells.forEach(text => {
+          const td = document.createElement('td');
+          td.textContent = text;
+          tr.appendChild(td);
+        });
+
+        const td = document.createElement('td');
+        const select = document.createElement('select');
+        STATUSES.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s;
+          opt.textContent = s;
+          if (s === r.status) opt.selected = true;
+          select.appendChild(opt);
+        });
+        select.onchange = () => updateStatus(r.id, select.value);
+        td.appendChild(select);
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function updateStatus(id, status) {
+      const { error } = await db.from('requests').update({ status: status }).eq('id', id);
+      if (error) { alert(error.message); return; }
+      loadRequests();
+    }
+
+    async function logout() {
+      await db.auth.signOut();
+      location.href = 'index.html';
+    }
+
+    init();
+  </script>
+</body>
+</html>
