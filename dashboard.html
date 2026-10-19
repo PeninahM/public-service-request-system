@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Requests</title>
+</head>
+<body>
+  <h1>My Service Requests</h1>
+  <button onclick="logout()">Logout</button>
+
+  <h2>Submit a request</h2>
+  <select id="category">
+    <option>Streetlight</option>
+    <option>Water issue</option>
+    <option>Garbage collection</option>
+    <option>Road damage</option>
+    <option>Other</option>
+  </select>
+  <input id="location" placeholder="Location">
+  <textarea id="description" placeholder="Describe the problem"></textarea>
+  <button onclick="submitRequest()">Submit</button>
+  <p id="msg"></p>
+
+  <h2>My requests</h2>
+  <ul id="list"></ul>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script>
+    const msg = document.getElementById('msg');
+    let currentUser = null;
+
+    async function init() {
+      const { data } = await db.auth.getUser();
+      if (!data.user) { location.href = 'index.html'; return; }
+      currentUser = data.user;
+      loadRequests();
+    }
+
+    async function submitRequest() {
+      const category = document.getElementById('category').value;
+      const location_ = document.getElementById('location').value.trim();
+      const description = document.getElementById('description').value.trim();
+      if (!location_ || !description) { msg.textContent = 'Please fill in all fields.'; return; }
+
+      const { error } = await db.from('requests').insert({
+        user_id: currentUser.id,
+        category: category,
+        location: location_,
+        description: description
+      });
+      if (error) { msg.textContent = error.message; return; }
+      msg.textContent = 'Request submitted!';
+      document.getElementById('location').value = '';
+      document.getElementById('description').value = '';
+      loadRequests();
+    }
+
+    async function loadRequests() {
+      const { data, error } = await db.from('requests').select('*').order('created_at', { ascending: false });
+      const list = document.getElementById('list');
+      list.innerHTML = '';
+      if (error) { list.textContent = error.message; return; }
+      data.forEach(r => {
+        const li = document.createElement('li');
+        li.textContent = r.category + ' at ' + r.location + ': ' + r.description + ' [' + r.status + ']';
+        list.appendChild(li);
+      });
+    }
+
+    async function logout() {
+      await db.auth.signOut();
+      location.href = 'index.html';
+    }
+
+    init();
+  </script>
+</body>
+</html>
