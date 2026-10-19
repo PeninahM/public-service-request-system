@@ -94,3 +94,10 @@ body {
   table { font-size: 0.85rem; }
   th, td { padding: 6px; }
 }
+
+h1, h2 {
+  background: rgba(255, 255, 255, 0.9);
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 6px;
+}
